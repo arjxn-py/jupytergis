@@ -3,6 +3,7 @@ import { showErrorMessage } from '@jupyterlab/apputils';
 import { ISubmitEvent } from '@rjsf/core';
 import { Ajv, ValidateFunction } from 'ajv';
 import * as geojson from '@jupytergis/schema/src/schema/geojson.json';
+import { readFile } from '../../tools';
 
 import { BaseForm, IBaseFormProps } from './baseform';
 
@@ -67,7 +68,7 @@ export class GeoJSONSourcePropertiesForm extends BaseForm {
     let valid = false;
     if (path) {
       try {
-        const geoJSONData = await this.props.model.readFile(
+        const geoJSONData = await readFile(
           path,
           'GeoJSONSource'
         );

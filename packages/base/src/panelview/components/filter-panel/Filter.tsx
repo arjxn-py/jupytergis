@@ -13,6 +13,7 @@ import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { debounce, getLayerTileInfo } from '../../../tools';
 import { IControlPanelModel } from '../../../types';
 import FilterRow from './FilterRow';
+import { readFile } from '../../../tools';
 
 /**
  * The filters panel widget.
@@ -209,7 +210,7 @@ const FilterComponent = (props: IFilterComponentProps) => {
         break;
       }
       case 'GeoJSONSource': {
-        const data = await model?.readFile(
+        const data = await readFile(
           source.parameters?.path,
           'GeoJSONSource'
         );

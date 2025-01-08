@@ -60,7 +60,7 @@ export class JupyterGISWidgetFactory extends ABCWidgetFactory<
     }
     const { model } = context;
     if (this._contentsManager) {
-      model.setContentsManager(this._contentsManager, context.path);
+      // model.setContentsManager(this._contentsManager, context.path);
     }
 
     const content = new JupyterGISPanel({

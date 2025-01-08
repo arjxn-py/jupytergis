@@ -8,7 +8,7 @@ import {
 import { IWidgetTracker } from '@jupyterlab/apputils';
 import { IChangedArgs } from '@jupyterlab/coreutils';
 import { DocumentRegistry, IDocumentWidget } from '@jupyterlab/docregistry';
-import { Contents, User } from '@jupyterlab/services';
+import { User } from '@jupyterlab/services';
 import { ISignal, Signal } from '@lumino/signaling';
 import { SplitPanel } from '@lumino/widgets';
 
@@ -163,10 +163,6 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
   sharedMetadataChanged: ISignal<IJupyterGISModel, MapChange>;
   zoomToAnnotationSignal: ISignal<IJupyterGISModel, string>;
 
-  setContentsManager(
-    value: Contents.IManager | undefined,
-    filePath: string
-  ): void;
   getContent(): IJGISContent;
   getLayers(): IJGISLayers;
   getLayer(id: string): IJGISLayer | undefined;
@@ -184,8 +180,6 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
   removeLayer(id: string): void;
   getOptions(): IJGISOptions;
   setOptions(value: IJGISOptions): void;
-
-  readFile(filepath: string, type: SourceType): Promise<any | undefined>;
 
   removeLayerGroup(groupName: string): void;
   renameLayerGroup(groupName: string, newName: string): void;

@@ -60,7 +60,7 @@ import { Rule } from 'ol/style/flat';
 import proj4 from 'proj4';
 import * as React from 'react';
 import shp from 'shpjs';
-import { isLightTheme, loadGeoTIFFWithCache, throttle } from '../tools';
+import { isLightTheme, loadGeoTIFFWithCache, throttle, readFile } from '../tools';
 import { MainViewModel } from './mainviewmodel';
 import { Spinner } from './spinner';
 //@ts-expect-error no types for proj4-list
@@ -425,7 +425,7 @@ export class MainView extends React.Component<IProps, IStates> {
       case 'GeoJSONSource': {
         const data =
           source.parameters?.data ||
-          (await this._model.readFile(
+          (await readFile(
             source.parameters?.path,
             'GeoJSONSource'
           ));
@@ -459,7 +459,7 @@ export class MainView extends React.Component<IProps, IStates> {
           geojson = await this._loadShapefileAsGeoJSON(parameters.path);
         } else {
           // Handle local files using the model's readFile method
-          geojson = await this._model.readFile(
+          geojson = readFile(
             parameters.path,
             'ShapefileSource'
           );
@@ -515,7 +515,7 @@ export class MainView extends React.Component<IProps, IStates> {
         ) {
           imageUrl = sourceParameters.url;
         } else {
-          imageUrl = await this._model.readFile(
+          imageUrl = await readFile(
             sourceParameters.url,
             'ImageSource'
           );

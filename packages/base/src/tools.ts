@@ -5,13 +5,17 @@ import { VectorTile } from '@mapbox/vector-tile';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 import * as d3Color from 'd3-color';
+import shp from 'shpjs';
 
 import {
   IDict,
   IJGISLayerBrowserRegistry,
   IJGISOptions,
+  IJGISSource,
   IRasterLayerGalleryEntry
 } from '@jupytergis/schema';
+import { ContentsManager } from '@jupyterlab/services';
+import { PathExt } from '@jupyterlab/coreutils';
 import RASTER_LAYER_GALLERY from '../rasterlayer_gallery/raster_layer_gallery.json';
 import { getGdal } from './gdal';
 
@@ -452,3 +456,119 @@ export const loadGeoTIFFWithCache = async (sourceInfo: {
     sourceUrl: sourceInfo.url
   };
 };
+
+const contentsManager = new ContentsManager();
+let filePath = '';
+
+/**
+ * Sets the base file path.
+ * @param path - The base file path.
+ */
+export function setFilePath(path: string): void {
+  filePath = path;
+}
+
+/**
+ * Reads a file based on its source type and returns its content.
+ * @param filepath - Path to the file.
+ * @param type - Type of the source file (e.g., "GeoJSONSource", "ShapefileSource").
+ * @returns A promise that resolves to the file content or undefined.
+ */
+export async function readFile(filepath: string, type: IJGISSource['type']): Promise<any | undefined> {
+  const absolutePath = PathExt.resolve(PathExt.dirname(filePath), filepath);
+
+  try {
+    const file = await contentsManager.get(absolutePath, { content: true });
+
+    if (!file.content) {
+      throw new Error(`File at ${absolutePath} is empty or inaccessible.`);
+    }
+
+    switch (type) {
+      case 'GeoJSONSource':
+        return parseGeoJSON(file.content);
+
+      case 'ShapefileSource':
+        return await parseShapefile(file.content);
+
+      case 'ImageSource':
+        return parseImage(filepath, file.content);
+
+      default:
+        throw new Error(`Unsupported source type: ${type}`);
+    }
+  } catch (error) {
+    console.error(`Error reading file '${filepath}':`, error);
+    throw error;
+  }
+}
+
+/**
+ * Parses GeoJSON content.
+ * @param content - The file content.
+ * @returns Parsed GeoJSON.
+ */
+function parseGeoJSON(content: string | object) {
+  return typeof content === 'string' ? JSON.parse(content) : content;
+}
+
+/**
+ * Parses a shapefile and converts it to GeoJSON.
+ * @param content - The shapefile content as a base64 string.
+ * @returns Parsed GeoJSON.
+ */
+async function parseShapefile(content: string): Promise<any> {
+  const arrayBuffer = await stringToArrayBuffer(content);
+  return shp(arrayBuffer);
+}
+
+/**
+ * Parses an image file and returns a data URL.
+ * @param filepath - Path to the file.
+ * @param content - File content as a base64 string.
+ * @returns A data URL for the image.
+ */
+function parseImage(filepath: string, content: string): string {
+  const mimeType = getMimeType(filepath);
+  return `data:${mimeType};base64,${content}`;
+}
+
+/**
+ * Determines the MIME type of a file based on its extension.
+ * @param filename - The name of the file.
+ * @returns The MIME type as a string.
+ */
+function getMimeType(filename: string): string {
+  const extension = filename.split('.').pop()?.toLowerCase();
+
+  switch (extension) {
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'svg':
+      return 'image/svg+xml';
+    default:
+      console.warn(
+        `Unknown file extension: ${extension}, defaulting to 'application/octet-stream'`
+      );
+      return 'application/octet-stream';
+  }
+}
+
+/**
+ * Converts a base64 string to an ArrayBuffer.
+ * @param content - File content as a base64 string.
+ * @returns An ArrayBuffer.
+ */
+async function stringToArrayBuffer(content: string): Promise<ArrayBuffer> {
+  const base64Response = await fetch(
+    `data:application/octet-stream;base64,${content}`
+  );
+  return await base64Response.arrayBuffer();
+}
