@@ -786,6 +786,8 @@ export class MainView extends React.Component<IProps, IStates> {
                 type: 'GeoTiffSource',
                 model: this._model,
               });
+              console.log('GeoTIFF file loaded:', geotiff);
+
               return {
                 ...addNoData(sourceInfo),
                 min: sourceInfo.min,

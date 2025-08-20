@@ -457,6 +457,9 @@ export const loadGeoTiff = async (
     return null;
   }
 
+  console.log('Loading GeoTIFF from source:', sourceInfo, file);
+
+
   const url = sourceInfo.url;
   const mimeType = getMimeType(url);
   if (!mimeType || !mimeType.startsWith('image/tiff')) {
@@ -646,8 +649,12 @@ export const loadFile = async (fileInfo: {
       }
 
       case 'GeoTiffSource': {
+        console.log('Loading GeoTIFF from file:', file);
+
         if (typeof file.content === 'string') {
           const tiff = loadGeoTiff({ url: filepath }, model, file);
+          console.log('GeoTIFFgsjbabxk loaded:', tiff);
+
           return tiff;
         } else {
           throw new Error('Invalid file format for tiff content.');
