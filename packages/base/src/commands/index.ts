@@ -7,7 +7,6 @@ import {
   IJupyterGISModel,
   JgisCoordinates,
   LayerType,
-  SelectionType,
   SourceType,
 } from '@jupytergis/schema';
 import { JupyterFrontEnd } from '@jupyterlab/application';
@@ -687,7 +686,7 @@ export function addCommands(
   /**
    * LAYERS and LAYER GROUP actions.
    */
-  commands.addCommand(CommandIDs.renameLayer, {
+  commands.addCommand(CommandIDs.renameSelected, {
     label: trans.__('Rename Layer'),
     describedBy: {
       args: {
@@ -737,12 +736,13 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      await Private.renameSelectedItem(model, 'layer');
+      await Private.renameSelectedItem(model);
     },
+    ...icons.get(CommandIDs.renameSelected),
   });
 
-  commands.addCommand(CommandIDs.removeLayer, {
-    label: trans.__('Remove Layer'),
+  commands.addCommand(CommandIDs.removeSelected, {
+    label: trans.__('Remove'),
     describedBy: {
       args: {
         type: 'object',
@@ -781,9 +781,7 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      Private.removeSelectedItems(model, 'layer', selection => {
-        model?.removeLayer(selection);
-      });
+      Private.removeSelectedItems(model);
 
       commands.notifyCommandChanged(CommandIDs.toggleStoryPresentationMode);
     },
@@ -833,7 +831,7 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      await Private.renameSelectedItem(model, 'group');
+      await Private.renameSelectedItem(model);
     },
   });
 
@@ -873,10 +871,9 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      await Private.removeSelectedItems(model, 'group', selection => {
-        model?.removeLayerGroup(selection);
-      });
+      await Private.removeSelectedItems(model);
     },
+    ...icons.get(CommandIDs.removeSelected),
   });
 
   commands.addCommand(CommandIDs.moveLayersToGroup, {
@@ -1082,7 +1079,7 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      await Private.renameSelectedItem(model, 'source');
+      await Private.renameSelectedItem(model);
     },
   });
 
@@ -1125,16 +1122,7 @@ export function addCommands(
       }
 
       // ---- FALLBACK TO ORIGINAL INTERACTIVE BEHAVIOR ----
-      Private.removeSelectedItems(model, 'source', selection => {
-        if (!(model?.getLayersBySource(selection).length ?? true)) {
-          model?.sharedModel.removeSource(selection);
-        } else {
-          showErrorMessage(
-            'Remove source error',
-            'The source is used by a layer.',
-          );
-        }
-      });
+      Private.removeSelectedSources(model);
     },
   });
 
@@ -1899,52 +1887,71 @@ namespace Private {
     };
   }
 
-  export function removeSelectedItems(
-    model: IJupyterGISModel | undefined,
-    itemTypeToRemove: SelectionType,
-    removeFunction: (id: string) => void,
-  ) {
+  export function removeSelectedItems(model: IJupyterGISModel | undefined) {
     const selected = model?.localState?.selected?.value;
 
-    if (!selected) {
+    if (!selected || !model) {
       console.error('Failed to remove selected item -- nothing selected');
       return;
     }
 
-    for (const selection in selected) {
-      if (selected[selection].type === itemTypeToRemove) {
-        removeFunction(selection);
+    for (const id of Object.keys(selected)) {
+      const item = selected[id];
+
+      switch (item.type) {
+        case 'layer':
+          model.removeLayer(id);
+          break;
+        case 'group':
+          model.removeLayerGroup(id);
+          break;
       }
     }
   }
 
   export async function renameSelectedItem(
     model: IJupyterGISModel | undefined,
-    itemType: SelectionType,
   ) {
-    const selectedItems = model?.localState?.selected.value;
+    const selectedItems = model?.localState?.selected?.value;
 
     if (!selectedItems || !model) {
-      console.error(`No ${itemType} selected`);
+      console.error('No item selected');
       return;
     }
 
-    let itemId = '';
+    const ids = Object.keys(selectedItems);
+    if (ids.length === 0) {
+      return;
+    }
 
-    // If more then one item is selected, only rename the first
-    for (const id in selectedItems) {
-      if (selectedItems[id].type === itemType) {
-        itemId = id;
-        break;
+    const itemId = ids[0];
+    const item = selectedItems[itemId];
+
+    if (!item.type) {
+      return;
+    }
+
+    model.setEditingItem(item.type, itemId);
+  }
+
+  export function removeSelectedSources(model: IJupyterGISModel | undefined) {
+    const selected = model?.localState?.selected?.value;
+
+    if (!selected || !model) {
+      return;
+    }
+
+    for (const id of Object.keys(selected)) {
+      if (model.getLayersBySource(id).length > 0) {
+        showErrorMessage(
+          'Remove source error',
+          'The source is used by a layer.',
+        );
+        continue;
       }
-    }
 
-    if (!itemId) {
-      return;
+      model.sharedModel.removeSource(id);
     }
-
-    // Set editing state - component will show inline input
-    model.setEditingItem(itemType, itemId);
   }
 
   export function executeConsole(tracker: JupyterGISTracker): void {
