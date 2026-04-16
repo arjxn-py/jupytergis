@@ -207,7 +207,10 @@ function computeGraduatedColorStops(
   let stops: number[];
   switch (mode) {
     case 'quantile':
-      stops = VectorClassifications.calculateQuantileBreaks(effectiveValues, nClasses);
+      stops = VectorClassifications.calculateQuantileBreaks(
+        effectiveValues,
+        nClasses,
+      );
       break;
     case 'equal interval':
       stops = VectorClassifications.calculateEqualIntervalBreaks(
@@ -216,7 +219,10 @@ function computeGraduatedColorStops(
       );
       break;
     case 'jenks':
-      stops = VectorClassifications.calculateJenksBreaks(effectiveValues, nClasses);
+      stops = VectorClassifications.calculateJenksBreaks(
+        effectiveValues,
+        nClasses,
+      );
       break;
     case 'pretty':
       stops = VectorClassifications.calculatePrettyBreaks(
