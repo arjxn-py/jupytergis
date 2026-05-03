@@ -1,5 +1,13 @@
 import { ICollaborativeContentProvider } from '@jupyter/collaborative-drive';
-import { CommandIDs, logoIcon, logoMiniIcon } from '@jupytergis/base';
+import {
+  CommandIDs,
+  checkServerAvailability,
+  isJupyterLite,
+  logoIcon,
+  logoMiniIcon,
+  resetServerAvailabilityCache,
+  setServerProcessingEnabled,
+} from '@jupytergis/base';
 import {
   IAnnotationModel,
   IAnnotationToken,
@@ -21,6 +29,7 @@ import {
   ICommandPalette,
   IThemeManager,
   WidgetTracker,
+  showErrorMessage,
 } from '@jupyterlab/apputils';
 import { IEditorServices } from '@jupyterlab/codeeditor';
 import { ConsolePanel, IConsoleTracker } from '@jupyterlab/console';
@@ -68,7 +77,53 @@ const activate = async (
   }
 
   try {
-    await settingRegistry.load(SETTINGS_ID);
+    const setting = await settingRegistry.load(SETTINGS_ID);
+
+    // Sync the `useServerGdalProcessing` setting with the runtime flag used by
+    // processing operations. In JupyterLite there is no server, so the toggle
+    // is forced off and an error dialog is shown if the user enables it. On a
+    // real Jupyter Server, we ping the GDAL endpoint and auto-revert the
+    // setting to false (with an error dialog) when GDAL is not installed.
+    const applyServerGdalSetting = async () => {
+      const requested = setting.composite['useServerGdalProcessing'] === true;
+
+      if (!requested) {
+        setServerProcessingEnabled(false);
+        return;
+      }
+
+      if (isJupyterLite()) {
+        setServerProcessingEnabled(false);
+        await showErrorMessage(
+          'Server-side GDAL is not available',
+          'Server-side GDAL processing requires a Jupyter Server and cannot be ' +
+            'used in JupyterLite. Reverting the setting to disabled.',
+        );
+        await setting.set('useServerGdalProcessing', false);
+        return;
+      }
+
+      resetServerAvailabilityCache();
+      const available = await checkServerAvailability();
+      if (!available) {
+        setServerProcessingEnabled(false);
+        await showErrorMessage(
+          'Server-side GDAL is not available',
+          'The Jupyter Server does not expose a GDAL endpoint. Install GDAL ' +
+            'in your environment (e.g. conda install -c conda-forge gdal) and ' +
+            'restart JupyterLab. Reverting the setting to disabled.',
+        );
+        await setting.set('useServerGdalProcessing', false);
+        return;
+      }
+
+      setServerProcessingEnabled(true);
+    };
+
+    await applyServerGdalSetting();
+    setting.changed.connect(() => {
+      void applyServerGdalSetting();
+    });
   } catch (error) {
     console.warn(`Failed to load settings for ${SETTINGS_ID}`, error);
   }

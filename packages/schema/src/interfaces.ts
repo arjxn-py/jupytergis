@@ -568,4 +568,7 @@ export interface IJupyterGISSettings {
 
   // Map controls
   zoomButtonsEnabled?: boolean;
+
+  // Processing
+  useServerGdalProcessing?: boolean;
 }
