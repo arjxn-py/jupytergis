@@ -474,7 +474,7 @@ export async function rasterizeLayer(
   };
 
   const layerModel: IJGISLayer = {
-    type: 'WebGlLayer',
+    type: 'GeoTiffLayer',
     parameters: { source: newSourceId },
     visible: true,
     name: `${selected.name} Rasterized`,
