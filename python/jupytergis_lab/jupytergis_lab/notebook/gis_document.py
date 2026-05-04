@@ -4,7 +4,7 @@ import json
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import requests
@@ -39,10 +39,11 @@ from pydantic import BaseModel
 from sidecar import Sidecar
 from ypywidgets.comm import CommWidget
 
+from jupytergis_lab.notebook.symbology import (  # noqa: TC001
+    GraduatedSymbology,
+    Symbology,
+)
 from jupytergis_lab.notebook.utils import get_gpkg_layers
-
-if TYPE_CHECKING:
-    from .symbology import GraduatedSymbology, Symbology
 
 logger = logging.getLogger(__file__)
 
