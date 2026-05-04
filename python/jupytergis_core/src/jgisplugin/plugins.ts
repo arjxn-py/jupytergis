@@ -79,26 +79,47 @@ const activate = async (
   try {
     const setting = await settingRegistry.load(SETTINGS_ID);
 
-    // On initial load: silently apply the best default without any dialogs.
-    // In JupyterLite there is no server so we always disable. In JupyterLab
-    // we probe GDAL and enable automatically if it is available.
+    // null  → auto-detect (probe the server endpoint, enable if reachable)
+    // true  → user explicitly enabled
+    // false → user explicitly disabled
+    const getExplicitSetting = (): boolean | null => {
+      const v = setting.composite['useServerGdalProcessing'];
+      if (v === true || v === false) {
+        return v;
+      }
+      return null;
+    };
+
+    // On initial load: silently apply without any dialogs.
+    // Respects an explicit user choice; falls back to auto-detect when null.
     const applyInitialServerGdalSetting = async () => {
       if (isJupyterLite()) {
         setServerProcessingEnabled(false);
         return;
       }
-      // JupyterLab: auto-enable when GDAL is reachable, stay false silently otherwise.
+
+      const explicit = getExplicitSetting();
+      if (explicit === false) {
+        setServerProcessingEnabled(false);
+        return;
+      }
+      if (explicit === true) {
+        // User previously enabled it — verify the endpoint is still reachable.
+        resetServerAvailabilityCache();
+        setServerProcessingEnabled(await checkServerAvailability());
+        return;
+      }
+      // null: auto-detect silently.
       resetServerAvailabilityCache();
-      const available = await checkServerAvailability();
-      setServerProcessingEnabled(available);
+      setServerProcessingEnabled(await checkServerAvailability());
     };
 
     // On explicit user change: honour the new value but validate and revert
     // with an error dialog when the environment does not support the feature.
     const applyUserChangedServerGdalSetting = async () => {
-      const requested = setting.composite['useServerGdalProcessing'] === true;
+      const requested = setting.composite['useServerGdalProcessing'];
 
-      if (!requested) {
+      if (requested === false || requested === null) {
         setServerProcessingEnabled(false);
         return;
       }
