@@ -353,7 +353,7 @@ export async function rasterizeLayer(
   let tiffBytes: Uint8Array;
 
   if (isServerProcessingEnabled()) {
-    console.log(
+    console.debug(
       `[JupyterGIS] Processing "${processingType}" via SERVER GDAL (${gdalFunction})`,
     );
     const t0 = performance.now();
@@ -371,11 +371,11 @@ export async function rasterizeLayer(
     for (let i = 0; i < binary.length; i++) {
       tiffBytes[i] = binary.charCodeAt(i);
     }
-    console.log(
+    console.debug(
       `[JupyterGIS] SERVER GDAL "${processingType}" finished in ${(performance.now() - t0).toFixed(0)}ms`,
     );
   } else {
-    console.log(
+    console.debug(
       `[JupyterGIS] Processing "${processingType}" via BROWSER WASM GDAL (${gdalFunction})`,
     );
     const t0 = performance.now();
@@ -394,7 +394,7 @@ export async function rasterizeLayer(
     );
     tiffBytes = await Gdal.getFileBytes(outputFilePath);
     Gdal.close(dataset);
-    console.log(
+    console.debug(
       `[JupyterGIS] BROWSER WASM GDAL "${processingType}" finished in ${(performance.now() - t0).toFixed(0)}ms`,
     );
   }
@@ -498,8 +498,7 @@ export async function executeSQLProcessing(
   let processedGeoJSONString: string;
 
   if (isServerProcessingEnabled()) {
-    // Server-side GDAL via subprocess
-    console.log(
+    console.debug(
       `[JupyterGIS] Processing "${processingType}" via SERVER GDAL (${gdalFunction})`,
     );
     const t0 = performance.now();
@@ -511,12 +510,11 @@ export async function executeSQLProcessing(
       outputName,
     });
     processedGeoJSONString = response.result;
-    console.log(
+    console.debug(
       `[JupyterGIS] SERVER GDAL "${processingType}" finished in ${(performance.now() - t0).toFixed(0)}ms`,
     );
   } else {
-    // Client-side GDAL via WASM
-    console.log(
+    console.debug(
       `[JupyterGIS] Processing "${processingType}" via BROWSER WASM GDAL (${gdalFunction})`,
     );
     const t0 = performance.now();
@@ -534,12 +532,14 @@ export async function executeSQLProcessing(
     }
 
     const dataset = result.datasets[0] as any;
-    const wasmOptions = options.map(o => o.replace('{outputName}', 'output.geojson'));
+    const wasmOptions = options.map(o =>
+      o.replace('{outputName}', 'output.geojson'),
+    );
     const outputFilePath = await Gdal[gdalFunction](dataset, wasmOptions);
     const processedBytes = await Gdal.getFileBytes(outputFilePath);
     processedGeoJSONString = new TextDecoder().decode(processedBytes);
     Gdal.close(dataset);
-    console.log(
+    console.debug(
       `[JupyterGIS] BROWSER WASM GDAL "${processingType}" finished in ${(performance.now() - t0).toFixed(0)}ms`,
     );
   }
