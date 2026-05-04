@@ -50,10 +50,10 @@ import {
   IVectorTileLayer,
   IVectorTileSource,
   IVideoSource,
-  IWebGlLayer,
+  IGeoTiffLayer,
   Modes,
 } from './types';
-export { IGeoJSONSource } from './_interface/project/sources/geoJsonSource';
+export type { IGeoJSONSource } from './_interface/project/sources/geoJsonSource';
 
 export interface IJGISUIState {
   leftPanelOpen?: boolean;
@@ -112,8 +112,29 @@ export interface ISelection {
   parent?: string;
 }
 
+export interface IIdentifiedFeature {
+  _id?: string;
+  _fromDrawTool?: boolean;
+  geometry?: unknown;
+  _geometry?: unknown;
+  [key: string]: unknown;
+}
+
+export interface IIdentifiedFeatureEntry {
+  feature: IIdentifiedFeature;
+  floaterOpen?: boolean;
+}
+
+export type IIdentifiedFeatures = IIdentifiedFeatureEntry[];
+
+export interface IIdentifiedFeaturesAwarenessState {
+  value?: IIdentifiedFeatures;
+  emitter?: string | null;
+}
+
 export interface IJupyterGISClientState {
   selected: { value?: { [key: string]: ISelection }; emitter?: string | null };
+  lastAddedLayer?: { layerId?: string };
   selectedPropField?: {
     id: string | null;
     value: any;
@@ -121,11 +142,37 @@ export interface IJupyterGISClientState {
   };
   viewportState: { value?: IViewPortState; emitter?: string | null };
   pointer: { value?: Pointer; emitter?: string | null };
-  identifiedFeatures: { value?: any; emitter?: string | null };
+  identifiedFeatures: IIdentifiedFeaturesAwarenessState;
   user: User.IIdentity;
   remoteUser?: number;
   toolbarForm?: IDict;
   isTemporalControllerActive: boolean;
+}
+
+export const AWARENESS_STATE_FIELDS = {
+  selected: 'selected',
+  pointer: 'pointer',
+  viewportState: 'viewportState',
+  identifiedFeatures: 'identifiedFeatures',
+  remoteUser: 'remoteUser',
+  isTemporalControllerActive: 'isTemporalControllerActive',
+  lastAddedLayer: 'lastAddedLayer',
+} as const;
+
+export type AwarenessFieldKey =
+  (typeof AWARENESS_STATE_FIELDS)[keyof typeof AWARENESS_STATE_FIELDS];
+
+export const AWARENESS_FIELD_KEYS = Object.values(
+  AWARENESS_STATE_FIELDS,
+) as AwarenessFieldKey[];
+
+export interface IAwarenessFieldChange<T = any> {
+  clientId: number;
+  field: AwarenessFieldKey;
+  previousValue: T | undefined;
+  currentValue: T | undefined;
+  fullState: IJupyterGISClientState | undefined;
+  isLocalClient: boolean;
 }
 
 export interface IJupyterGISDoc extends YDocument<IJupyterGISDocChange> {
@@ -233,9 +280,29 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
     IJupyterGISModel,
     IChangedArgs<string, string | null, string>
   >;
-  clientStateChanged: ISignal<
+  selectedChanged: ISignal<
     IJupyterGISModel,
-    Map<number, IJupyterGISClientState>
+    IAwarenessFieldChange<IJupyterGISClientState['selected']>
+  >;
+  pointerChanged: ISignal<
+    IJupyterGISModel,
+    IAwarenessFieldChange<IJupyterGISClientState['pointer']>
+  >;
+  viewportStateChanged: ISignal<
+    IJupyterGISModel,
+    IAwarenessFieldChange<IJupyterGISClientState['viewportState']>
+  >;
+  identifiedFeaturesChanged: ISignal<
+    IJupyterGISModel,
+    IAwarenessFieldChange<IJupyterGISClientState['identifiedFeatures']>
+  >;
+  remoteUserChanged: ISignal<
+    IJupyterGISModel,
+    IAwarenessFieldChange<IJupyterGISClientState['remoteUser']>
+  >;
+  temporalControllerActiveChanged: ISignal<
+    IJupyterGISModel,
+    IAwarenessFieldChange<IJupyterGISClientState['isTemporalControllerActive']>
   >;
   sharedOptionsChanged: ISignal<IJupyterGISDoc, MapChange>;
   sharedLayersChanged: ISignal<IJupyterGISDoc, IJGISLayerDocChange>;
@@ -249,6 +316,7 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
   flyToGeometrySignal: Signal<IJupyterGISModel, any>;
   highlightFeatureSignal: Signal<IJupyterGISModel, any>;
   updateBboxSignal: Signal<IJupyterGISModel, any>;
+  editingVectorLayerChanged: ISignal<IJupyterGISModel, boolean>;
 
   contentsManager: Contents.IManager | undefined;
   filePath: string;
@@ -317,7 +385,7 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
     { type: SelectionType; itemId: string } | null
   >;
   syncPointer(pointer?: Pointer, emitter?: string): void;
-  syncIdentifiedFeatures(features: IDict<any>, emitter?: string): void;
+  syncIdentifiedFeatures(features: IIdentifiedFeatures, emitter?: string): void;
   setUserToFollow(userId?: number): void;
 
   getClientId(): number;
@@ -327,6 +395,9 @@ export interface IJupyterGISModel extends DocumentRegistry.IModel {
   centerOnPosition(id: string): void;
 
   toggleMode(mode: Modes): void;
+  editingVectorLayer: boolean;
+  updateEditingVectorLayer(): void;
+  checkIfIsADrawVectorLayer(layer: IJGISLayer): boolean;
 
   isTemporalControllerActive: boolean;
   toggleTemporalController(): void;
@@ -436,7 +507,7 @@ export type ILayerGalleryEntry = {
     | IStorySegmentLayer
     | IVectorLayer
     | IVectorTileLayer
-    | IWebGlLayer;
+    | IGeoTiffLayer;
   sourceType: SourceType;
   sourceParameters:
     | IGeoJSONSource

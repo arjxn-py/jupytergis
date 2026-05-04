@@ -54,7 +54,7 @@ const SymbologyDialog: React.FC<ISymbologyDialogProps> = ({
   let LayerSymbology: React.JSX.Element;
 
   useEffect(() => {
-    const handleClientStateChanged = () => {
+    const handleSelectedChanged = () => {
       if (!model.localState?.selected?.value) {
         return;
       }
@@ -65,12 +65,12 @@ const SymbologyDialog: React.FC<ISymbologyDialogProps> = ({
     };
 
     // Initial state
-    handleClientStateChanged();
+    handleSelectedChanged();
 
-    model.clientStateChanged.connect(handleClientStateChanged);
+    model.selectedChanged.connect(handleSelectedChanged);
 
     return () => {
-      model.clientStateChanged.disconnect(handleClientStateChanged);
+      model.selectedChanged.disconnect(handleSelectedChanged);
     };
   }, []);
 
@@ -85,7 +85,7 @@ const SymbologyDialog: React.FC<ISymbologyDialogProps> = ({
       return;
     }
 
-    // TODO WebGlLayers can also be used for other layers, need a better way to determine source + layer combo
+    // TODO GeoTiffLayers can also be used for other layers, need a better way to determine source + layer combo
     switch (layer.type) {
       case 'VectorLayer':
       case 'VectorTileLayer':
@@ -100,7 +100,7 @@ const SymbologyDialog: React.FC<ISymbologyDialogProps> = ({
           />
         );
         break;
-      case 'WebGlLayer':
+      case 'GeoTiffLayer':
         LayerSymbology = (
           <TiffRendering
             model={model}

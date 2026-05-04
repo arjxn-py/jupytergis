@@ -1,0 +1,35 @@
+name: 'Typecheck Python (layer gallery script only)'
+
+on:
+  push:
+    branches: 'main'
+  pull_request:
+    branches: '*'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}'
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  mypy:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd' # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: 'Install the latest version of uv'
+        uses: 'astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b' # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: 'Install dependencies'
+        working-directory: './scripts/layer_gallery'
+        run: 'uv sync'
+
+      - name: 'Run mypy'
+        working-directory: './scripts/layer_gallery'
+        run: 'uv run mypy'

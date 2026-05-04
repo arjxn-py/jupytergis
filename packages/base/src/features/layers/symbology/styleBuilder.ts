@@ -17,6 +17,7 @@ export type GeometryType = 'fill' | 'circle' | 'line';
 
 const DEFAULT_RADIUS = 5;
 const TRANSPARENT: RgbaColor = [0, 0, 0, 0];
+const DEFAULT_FILL_COLOR: RgbaColor = [255, 255, 255, 0.4];
 
 /**
  * Defaults applied when `buildVectorFlatStyle` returns `undefined`.
@@ -102,11 +103,19 @@ export function buildTransparentFallbackFilter(
       return ['has', field];
 
     case 'Categorized': {
-      // For categorized, only show features whose value is in the unique-values
-      // list (i.e. has a matching stop).
-      const uniqueValues = [
-        ...new Set(featureValues.filter(v => v !== undefined && v !== null)),
-      ];
+      // For categorized, only show features whose value is in the stop list.
+      // Prefer stopsOverride (persisted by the dialog for all source types),
+      // fall back to featureValues for in-memory VectorSource layers.
+      let uniqueValues: unknown[];
+      if (state.stopsOverride && state.stopsOverride.length > 0) {
+        uniqueValues = state.stopsOverride
+          .map(s => s.value)
+          .filter(v => v !== undefined && v !== null);
+      } else {
+        uniqueValues = [
+          ...new Set(featureValues.filter(v => v !== undefined && v !== null)),
+        ];
+      }
       if (uniqueValues.length === 0) {
         return ['==', 0, 1];
       }
@@ -167,6 +176,7 @@ function computeGraduatedColorStops(
   numericValues: number[],
 ): IComputedStop[] {
   const nClasses = state.nClasses ?? 9;
+  const nStops = nClasses + 1; // classification functions use anchor-point count
   const mode = state.mode ?? 'equal interval';
   const rampName = state.colorRamp ?? 'viridis';
   const reverse = state.reverseRamp ?? false;
@@ -209,47 +219,38 @@ function computeGraduatedColorStops(
     case 'quantile':
       stops = VectorClassifications.calculateQuantileBreaks(
         effectiveValues,
-        nClasses,
+        nStops,
       );
       break;
     case 'equal interval':
       stops = VectorClassifications.calculateEqualIntervalBreaks(
         rangeValues,
-        nClasses,
+        nStops,
       );
       break;
     case 'jenks':
       stops = VectorClassifications.calculateJenksBreaks(
         effectiveValues,
-        nClasses,
+        nStops,
       );
       break;
     case 'pretty':
-      stops = VectorClassifications.calculatePrettyBreaks(
-        rangeValues,
-        nClasses,
-      );
+      stops = VectorClassifications.calculatePrettyBreaks(rangeValues, nStops);
       break;
     case 'logarithmic':
       stops = VectorClassifications.calculateLogarithmicBreaks(
         rangeValues,
-        nClasses,
+        nStops,
       );
       break;
     default:
       stops = VectorClassifications.calculateEqualIntervalBreaks(
         rangeValues,
-        nClasses,
+        nStops,
       );
   }
 
-  // Pin outer stops to the range.
-  if (stops.length > 0) {
-    stops[0] = rangeMin;
-    stops[stops.length - 1] = rangeMax;
-  }
-
-  return mapStopsToColors(stops, rampName, nClasses, reverse);
+  return mapStopsToColors(stops, rampName, stops.length, reverse);
 }
 
 /**
@@ -439,7 +440,7 @@ function generateColors(
 // Per-render-type builders
 
 function buildSingleSymbol(state: SymbologyState): FlatStyle {
-  const fill = (state.fillColor ?? DEFAULT_COLOR) as number[];
+  const fill = (state.fillColor ?? DEFAULT_FILL_COLOR) as number[];
   const stroke = (state.strokeColor ?? DEFAULT_COLOR) as number[];
   const strokeWidth = nonNegative(state.strokeWidth, DEFAULT_STROKE_WIDTH);
   const radius = state.radius ?? DEFAULT_RADIUS;
@@ -509,15 +510,16 @@ function buildGraduated(
         style['circle-stroke-color'] = manualStroke;
       }
     } else {
-      style['fill-color'] = (state.fillColor ?? DEFAULT_COLOR) as number[];
+      style['fill-color'] = (state.fillColor ?? DEFAULT_FILL_COLOR) as number[];
       style['circle-fill-color'] = (state.fillColor ??
-        DEFAULT_COLOR) as number[];
+        DEFAULT_FILL_COLOR) as number[];
       style['stroke-color'] = manualStroke;
       style['circle-stroke-color'] = manualStroke;
     }
   } else {
-    style['fill-color'] = (state.fillColor ?? DEFAULT_COLOR) as number[];
-    style['circle-fill-color'] = (state.fillColor ?? DEFAULT_COLOR) as number[];
+    style['fill-color'] = (state.fillColor ?? DEFAULT_FILL_COLOR) as number[];
+    style['circle-fill-color'] = (state.fillColor ??
+      DEFAULT_FILL_COLOR) as number[];
     style['stroke-color'] = manualStroke;
     style['circle-stroke-color'] = manualStroke;
   }
@@ -554,7 +556,7 @@ function buildCategorized(
   const fallback = (state.fallbackColor ?? TRANSPARENT) as number[];
   const strokeWidth = nonNegative(state.strokeWidth, DEFAULT_STROKE_WIDTH);
   const radius = state.radius ?? DEFAULT_RADIUS;
-  const manualFill = (state.fillColor ?? DEFAULT_COLOR) as number[];
+  const manualFill = (state.fillColor ?? DEFAULT_FILL_COLOR) as number[];
   const manualStroke = (state.strokeColor ?? DEFAULT_COLOR) as number[];
 
   const style: FlatStyle = {

@@ -30,7 +30,7 @@ import { addProcessingCommands } from '../features/processing/processingCommands
 import keybindings from '../keybindings.json';
 import { getGeoJSONDataFromLayerSource, downloadFile } from '../tools';
 import { JupyterGISTracker, SYMBOLOGY_VALID_LAYER_TYPES } from '../types';
-import { JupyterGISDocumentWidget } from '../widget';
+import { JupyterGISDocumentWidget } from '../workspace/widget';
 
 const POINT_SELECTION_TOOL_CLASS = 'jGIS-point-selection-tool';
 
@@ -255,7 +255,7 @@ export function addCommands(
       const canIdentify = [
         'VectorLayer',
         'ShapefileLayer',
-        'WebGlLayer',
+        'GeoTiffLayer',
         'VectorTileLayer',
       ].includes(selectedLayer.type);
 
@@ -278,7 +278,7 @@ export function addCommands(
       return [
         'VectorLayer',
         'ShapefileLayer',
-        'WebGlLayer',
+        'GeoTiffLayer',
         'VectorTileLayer',
       ].includes(selectedLayer.type);
     },
@@ -541,7 +541,7 @@ export function addCommands(
       createSource: true,
       layerData: { name: 'Custom WMS Layer' },
       sourceType: 'WmsTileSource',
-      layerType: 'WebGlLayer',
+      layerType: 'GeoTiffLayer',
     }),
     ...icons.get(CommandIDs.openNewWmsDialog),
   });
@@ -690,7 +690,7 @@ export function addCommands(
       },
       layerData: { name: 'Custom GeoTiff Layer' },
       sourceType: 'GeoTiffSource',
-      layerType: 'WebGlLayer',
+      layerType: 'GeoTiffLayer',
     }),
     ...icons.get(CommandIDs.openNewGeoTiffDialog),
   });
@@ -1621,6 +1621,81 @@ export function addCommands(
       commands.notifyCommandChanged(CommandIDs.addMarker);
     },
     ...icons.get(CommandIDs.addMarker),
+  });
+
+  commands.addCommand(CommandIDs.toggleDrawFeatures, {
+    label: trans.__('Edit Features'),
+    caption: 'Toggle feature editing for the selected draw-compatible layer.',
+    describedBy: {
+      args: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    isToggled: () => {
+      if (!(tracker.currentWidget instanceof JupyterGISDocumentWidget)) {
+        return false;
+      }
+
+      const model = tracker.currentWidget?.content?.currentViewModel
+        ?.jGISModel as IJupyterGISModel | undefined;
+
+      if (!model) {
+        return false;
+      }
+
+      const selectedLayer = getSingleSelectedLayer(tracker);
+
+      if (!selectedLayer) {
+        return false;
+      }
+
+      if (!model.checkIfIsADrawVectorLayer(selectedLayer)) {
+        return false;
+      }
+
+      return model.editingVectorLayer;
+    },
+    isEnabled: () => {
+      if (!(tracker.currentWidget instanceof JupyterGISDocumentWidget)) {
+        return false;
+      }
+
+      const model = tracker.currentWidget?.content?.currentViewModel
+        ?.jGISModel as IJupyterGISModel | undefined;
+
+      if (!model) {
+        return false;
+      }
+
+      const selectedLayer = getSingleSelectedLayer(tracker);
+      if (!selectedLayer) {
+        return false;
+      }
+
+      return model.checkIfIsADrawVectorLayer(selectedLayer) === true;
+    },
+    execute: async () => {
+      if (!(tracker.currentWidget instanceof JupyterGISDocumentWidget)) {
+        return;
+      }
+
+      const model = tracker.currentWidget?.content.currentViewModel?.jGISModel;
+      if (!model) {
+        return false;
+      }
+
+      const selectedLayer = getSingleSelectedLayer(tracker);
+
+      if (!selectedLayer) {
+        return false;
+      }
+
+      model.editingVectorLayer = !model.editingVectorLayer;
+      model.updateEditingVectorLayer();
+      commands.notifyCommandChanged(CommandIDs.toggleDrawFeatures);
+    },
+    ...icons.get(CommandIDs.toggleDrawFeatures),
   });
 
   commands.addCommand(CommandIDs.addStorySegment, {

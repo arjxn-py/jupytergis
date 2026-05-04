@@ -18,8 +18,8 @@ import { Widget } from '@lumino/widgets';
 import * as React from 'react';
 
 import { CommandIDs } from '@/src/constants';
-import { rasterSubMenu, vectorSubMenu } from '@/src/menus';
 import { terminalToolbarIcon } from '@/src/shared/icons';
+import { rasterSubMenu, vectorSubMenu } from '@/src/workspace/menus';
 
 export const TOOLBAR_SEPARATOR_CLASS = 'jGIS-Toolbar-Separator';
 export const TOOLBAR_GROUPNAME_CLASS = 'jGIS-Toolbar-GroupName';
@@ -164,6 +164,16 @@ export class ToolbarWidget extends ReactiveToolbar {
 
       this.addItem('addMarker', addMarkerButton);
       addMarkerButton.node.dataset.testid = 'add-marker-controller-button';
+
+      const toggleDrawFeaturesButton = new CommandToolbarButton({
+        id: CommandIDs.toggleDrawFeatures,
+        label: '',
+        commands: options.commands,
+      });
+
+      this.addItem('toggleDrawFeatures', toggleDrawFeaturesButton);
+      toggleDrawFeaturesButton.node.dataset.testid =
+        'toggle-draw-features-button';
 
       const storyModePresentationToggleButton = new CommandToolbarButton({
         id: CommandIDs.toggleStoryPresentationMode,

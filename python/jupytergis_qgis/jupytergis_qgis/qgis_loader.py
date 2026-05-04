@@ -10,6 +10,7 @@ from urllib.parse import unquote
 from uuid import uuid4
 
 from jupytergis_core.color_ramps import sample_colors
+from jupytergis_core.colors import hex_to_rgba, rgb_to_hex
 from PyQt5.QtGui import QColor
 from qgis.core import (  # type: ignore[import-untyped]
     Qgis,
@@ -151,7 +152,7 @@ def qgis_layer_to_jgis(
     """Load a QGIS layer into the provided layers/sources dictionary in the JGIS format. Returns the layer id or None if enable to load the layer."""
     layer = qgis_layer.layer()
     if layer is None:
-        return
+        return None
 
     layer_name = layer.name()
     is_visible = qgis_layer.isVisible()
@@ -172,8 +173,8 @@ def qgis_layer_to_jgis(
                 tables=gpkg_table or "",
             )
         # QGIS treats tif layers as raster layer
-        elif layer.source().endswith(".tif"):
-            layer_type = "WebGlLayer"
+        if layer.source().endswith(".tif"):
+            layer_type = "GeoTiffLayer"
             source_type = "GeoTiffSource"
 
             # Need to build layer color
@@ -191,7 +192,7 @@ def qgis_layer_to_jgis(
                     "url": layer.source()[9:],
                     "min": source_min,
                     "max": source_max,
-                }
+                },
             ]
 
             colorRampTypeMap = {0: "interpolate", 1: "discrete", 2: "exact"}
@@ -217,7 +218,7 @@ def qgis_layer_to_jgis(
                             node.color.green(),
                             node.color.blue(),
                             float(node.color.alpha()) / 255,
-                        ]
+                        ],
                     )
 
             if colorRampType == "discrete":
@@ -456,7 +457,7 @@ def qgis_layer_to_jgis(
 
     if layer_type is None:
         print(f"JUPYTERGIS - Unable to load layer type {type(layer)}")
-        return
+        return None
 
     layer_id = layer.id()
 
@@ -464,7 +465,8 @@ def qgis_layer_to_jgis(
         layerSourceMap = settings.value("layerSourceMap", {})
         source_id = layerSourceMap.get(layer_id, {}).get("source_id", str(uuid4()))
         source_name = layerSourceMap.get(layer_id, {}).get(
-            "source_name", f"{layer_name} Source"
+            "source_name",
+            f"{layer_name} Source",
         )
     else:
         source_id = str(uuid4())
@@ -507,7 +509,7 @@ def _build_color_ramp(operator, colorList, band, source_min, source_max):
                 node.color.green(),
                 node.color.blue(),
                 float(node.color.alpha()) / 255,
-            ]
+            ],
         )
 
     lastElement = colorList[-1]
@@ -523,7 +525,7 @@ def _build_color_ramp(operator, colorList, band, source_min, source_max):
             lastElement.color.green(),
             lastElement.color.blue(),
             float(node.color.alpha()) / 255,
-        ]
+        ],
     )
 
     # Fallback value for openlayers
@@ -690,7 +692,7 @@ def create_categorized_renderer(symbology_state, geometry_type, base_symbol, map
             if geometry_type == "circle":
                 category_symbol.setSize(2 * symbology_state.get("radius", 5))
             renderer.addCategory(
-                QgsRendererCategory(value, category_symbol, str(value))
+                QgsRendererCategory(value, category_symbol, str(value)),
             )
     else:
         idx = map_layer.fields().indexOf(field_name) if map_layer else -1
@@ -704,7 +706,7 @@ def create_categorized_renderer(symbology_state, geometry_type, base_symbol, map
             if geometry_type == "circle":
                 category_symbol.setSize(2 * symbology_state.get("radius", 5))
             renderer.addCategory(
-                QgsRendererCategory(value, category_symbol, str(value))
+                QgsRendererCategory(value, category_symbol, str(value)),
             )
 
     return renderer
@@ -735,7 +737,7 @@ def create_graduated_renderer(symbology_state, geometry_type, base_symbol, map_l
             range_symbol = base_symbol.clone()
             range_symbol.setColor(_rgba_to_qcolor(rgba))
             renderer.addClassRange(
-                QgsRendererRange(lower, upper, range_symbol, f"{lower} - {upper}")
+                QgsRendererRange(lower, upper, range_symbol, f"{lower} - {upper}"),
             )
     elif map_layer:
         mode = symbology_state.get("mode", "equal interval")
@@ -755,14 +757,14 @@ def jgis_layer_to_qgis(
     # The function that build the URI from the source parameters.
     def build_uri(parameters: dict[str, str], source_type: str) -> str | None:
         layer_config = {}
-        zmax = parameters.get("maxZoom", None)
+        zmax = parameters.get("maxZoom")
         zmin = parameters.get("minZoom", 0)
 
         if source_type in ["RasterSource", "VectorTileSource"]:
-            url = parameters.get("url", None)
+            url = parameters.get("url")
             if url is None:
-                return
-            urlParameters = parameters.get("urlParameters", None)
+                return None
+            urlParameters = parameters.get("urlParameters")
             if urlParameters:
                 for k, v in urlParameters.items():
                     url = url.replace(f"{{{k}}}", v)
@@ -770,7 +772,7 @@ def jgis_layer_to_qgis(
             layer_config["type"] = "xyz"
 
         if source_type == "GeoJSONSource":
-            path = parameters.get("path", None)
+            path = parameters.get("path")
             return path
 
         if source_type == "RasterSource":
@@ -784,19 +786,19 @@ def jgis_layer_to_qgis(
             uri.setParam(key, val)
         return bytes(uri.encodedUri()).decode()
 
-    layer = layers.get(layer_id, None)
+    layer = layers.get(layer_id)
     if layer is None:
         logs["warnings"].append(
-            f"Layer {layer_id} not exported: the layer {layer_id} is not in layer list"
+            f"Layer {layer_id} not exported: the layer {layer_id} is not in layer list",
         )
-        return
+        return None
     source_id = layer.get("parameters", {}).get("source", "")
-    source = sources.get(source_id, None)
+    source = sources.get(source_id)
     if source is None:
         logs["warnings"].append(
-            f"Layer {layer_id} not exported: the source {source_id} is not in source list"
+            f"Layer {layer_id} not exported: the source {source_id} is not in source list",
         )
-        return
+        return None
 
     map_layer = None
 
@@ -805,9 +807,9 @@ def jgis_layer_to_qgis(
     source_type = source.get("type", None)
     if any([v is None for v in [layer_name, layer_type, source_type]]):
         logs["warnings"].append(
-            f"Layer {layer_id} not exported: at least one of layer name, layer type or source type is missing."
+            f"Layer {layer_id} not exported: at least one of layer name, layer type or source type is missing.",
         )
-        return
+        return None
 
     if layer_type == "RasterLayer" and source_type == "RasterSource":
         source_parameters = source.get("parameters", {})
@@ -886,9 +888,9 @@ def jgis_layer_to_qgis(
         uri = build_uri(source_parameters, "GeoJSONSource")
         if not uri:
             logs["warnings"].append(
-                f"Layer {layer_id} not exported: invalid GeoJSON source."
+                f"Layer {layer_id} not exported: invalid GeoJSON source.",
             )
-            return
+            return None
 
         # Not checking for file.isValid() since it will eventually fail to load the file (relative path on the original file does not match server root)
         map_layer = QgsVectorLayer(uri, layer_name, "ogr")
@@ -925,13 +927,13 @@ def jgis_layer_to_qgis(
 
         if symbol is None:
             logs["warnings"].append(
-                f"Layer {layer_id} not exported: unknown geometry type '{geometry_type}'."
+                f"Layer {layer_id} not exported: unknown geometry type '{geometry_type}'.",
             )
-            return
+            return None
 
         if render_type == "Single Symbol":
             fill_color = _rgba_to_qcolor(
-                symbology_state.get("fillColor", [51, 153, 204, 1])
+                symbology_state.get("fillColor", [51, 153, 204, 1]),
             )
             symbol.setColor(fill_color)
 
@@ -940,7 +942,7 @@ def jgis_layer_to_qgis(
                 symbol.setSize(2 * radius)
             elif geometry_type == "fill":
                 stroke_color = _rgba_to_qcolor(
-                    symbology_state.get("strokeColor", [0, 0, 0, 1])
+                    symbology_state.get("strokeColor", [0, 0, 0, 1]),
                 )
                 symbol_layer = symbol.symbolLayer(0)
                 symbol_layer.setStrokeColor(stroke_color)
@@ -949,12 +951,18 @@ def jgis_layer_to_qgis(
 
         elif render_type == "Categorized":
             renderer = create_categorized_renderer(
-                symbology_state, geometry_type, symbol, map_layer
+                symbology_state,
+                geometry_type,
+                symbol,
+                map_layer,
             )
 
         elif render_type == "Graduated":
             renderer = create_graduated_renderer(
-                symbology_state, geometry_type, symbol, map_layer
+                symbology_state,
+                geometry_type,
+                symbol,
+                map_layer,
             )
 
         map_layer.setRenderer(renderer)
@@ -976,7 +984,7 @@ def jgis_layer_to_qgis(
         if stroke_width is not None:
             map_layer.setCustomProperty(PROP_STROKE_WIDTH, stroke_width)
 
-    if layer_type == "WebGlLayer" and source_type == "GeoTiffSource":
+    if layer_type == "GeoTiffLayer" and source_type == "GeoTiffSource":
         source_parameters = source.get("parameters", {})
         # TODO: Support sources with multiple URLs
         url = "/vsicurl/" + source_parameters["urls"][0]["url"]
@@ -1082,10 +1090,10 @@ def jgis_layer_to_qgis(
 
     if map_layer is None:
         logs["warnings"].append(
-            f"Layer {layer_id} not exported: enable to export layer type {layer_type}"
+            f"Layer {layer_id} not exported: enable to export layer type {layer_type}",
         )
         print(f"JUPYTERGIS - Unable to export layer type {layer_type}")
-        return
+        return None
 
     map_layer.setId(layer_id)
     map_layer.setOpacity(layer.get("parameters", {}).get("opacity", 1.0))
@@ -1212,10 +1220,11 @@ def _bundle_local_vector_sources_to_gpkg(
 
 
 def export_project_to_qgis(
-    path: str | Path, virtual_file: dict[str, Any]
+    path: str | Path,
+    virtual_file: dict[str, Any],
 ) -> dict[str, list[str]]:
     if not all(k in virtual_file for k in ["layers", "sources", "layerTree"]):
-        return
+        return None
 
     if isinstance(path, Path):
         path = str(path)
@@ -1262,12 +1271,13 @@ def export_project_to_qgis(
             extent = virtual_file["options"]["extent"]
             view_settings.setDefaultViewExtent(
                 QgsReferencedRectangle(
-                    QgsRectangle(*extent), QgsCoordinateReferenceSystem(src_csr_id)
-                )
+                    QgsRectangle(*extent),
+                    QgsCoordinateReferenceSystem(src_csr_id),
+                ),
             )
         else:
             logs["warnings"].append(
-                "The 'extent' parameter is missing to save the viewport"
+                "The 'extent' parameter is missing to save the viewport",
             )
             print("The 'extent' parameter is missing to save the viewport")
 
