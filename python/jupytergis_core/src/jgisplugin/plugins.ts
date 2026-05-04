@@ -79,12 +79,23 @@ const activate = async (
   try {
     const setting = await settingRegistry.load(SETTINGS_ID);
 
-    // Sync the `useServerGdalProcessing` setting with the runtime flag used by
-    // processing operations. In JupyterLite there is no server, so the toggle
-    // is forced off and an error dialog is shown if the user enables it. On a
-    // real Jupyter Server, we ping the GDAL endpoint and auto-revert the
-    // setting to false (with an error dialog) when GDAL is not installed.
-    const applyServerGdalSetting = async () => {
+    // On initial load: silently apply the best default without any dialogs.
+    // In JupyterLite there is no server so we always disable. In JupyterLab
+    // we probe GDAL and enable automatically if it is available.
+    const applyInitialServerGdalSetting = async () => {
+      if (isJupyterLite()) {
+        setServerProcessingEnabled(false);
+        return;
+      }
+      // JupyterLab: auto-enable when GDAL is reachable, stay false silently otherwise.
+      resetServerAvailabilityCache();
+      const available = await checkServerAvailability();
+      setServerProcessingEnabled(available);
+    };
+
+    // On explicit user change: honour the new value but validate and revert
+    // with an error dialog when the environment does not support the feature.
+    const applyUserChangedServerGdalSetting = async () => {
       const requested = setting.composite['useServerGdalProcessing'] === true;
 
       if (!requested) {
@@ -120,9 +131,9 @@ const activate = async (
       setServerProcessingEnabled(true);
     };
 
-    await applyServerGdalSetting();
+    await applyInitialServerGdalSetting();
     setting.changed.connect(() => {
-      void applyServerGdalSetting();
+      void applyUserChangedServerGdalSetting();
     });
   } catch (error) {
     console.warn(`Failed to load settings for ${SETTINGS_ID}`, error);
