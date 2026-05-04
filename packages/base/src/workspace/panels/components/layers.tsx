@@ -607,11 +607,21 @@ const LayerComponent: React.FC<ILayerProps> = props => {
         {/* Expand/collapse legend button — always rendered to preserve alignment */}
         <Button
           minimal
-          onClick={hasSupportedSymbology ? e => {
-            e.stopPropagation();
-            setExpanded(v => !v);
-          } : undefined}
-          title={hasSupportedSymbology ? (expanded ? 'Hide legend' : 'Show legend') : undefined}
+          onClick={
+            hasSupportedSymbology
+              ? e => {
+                  e.stopPropagation();
+                  setExpanded(v => !v);
+                }
+              : undefined
+          }
+          title={
+            hasSupportedSymbology
+              ? expanded
+                ? 'Hide legend'
+                : 'Show legend'
+              : undefined
+          }
           style={{ visibility: hasSupportedSymbology ? 'visible' : 'hidden' }}
         >
           <LabIcon.resolveReact
