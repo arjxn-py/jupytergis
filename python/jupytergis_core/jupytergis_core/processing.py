@@ -39,10 +39,11 @@ def run_gdal(
         # hardcoding it, so we know unambiguously where the output will land.
         resolved_options = [o.replace("{outputName}", output_path) for o in options]
 
-        # Build the command: <operation> [options...] <input> [<output for rasterize>]
-        # ogr2ogr embeds the output in options; gdal_rasterize takes it as a separate arg.
+        # ogr2ogr embeds the output path inside options (via {outputName}).
+        # gdal_rasterize, gdalwarp, and gdal_translate require the destination
+        # dataset as a separate trailing positional argument.
         cmd = [operation, *resolved_options, input_path]
-        if operation == "gdal_rasterize":
+        if operation in {"gdal_rasterize", "gdalwarp", "gdal_translate"}:
             cmd.append(output_path)
 
         logger.info("Running GDAL: %s", " ".join(cmd))

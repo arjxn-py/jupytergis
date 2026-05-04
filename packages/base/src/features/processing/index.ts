@@ -466,7 +466,9 @@ export async function rasterizeLayer(
     type: 'GeoTiffSource',
     name: `${selected.name} Rasterized Source`,
     parameters: {
-      urls: [{ url: sourceUrl, min: bandMin, max: bandMax }],
+      urls: [
+        { url: sourceUrl, min: bandMin, max: bandMax, nodata: noDataValue },
+      ],
       normalize: true,
       wrapX: false,
       interpolate: false,

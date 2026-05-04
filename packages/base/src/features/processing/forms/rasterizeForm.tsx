@@ -34,14 +34,15 @@ async function fetchNumericFieldNames(
     return [];
   }
   const sourceData = source.parameters as IGeoJSONSource;
-  if (!sourceData?.path) {
-    return [];
-  }
-  const jsonData = await loadFile({
-    filepath: sourceData.path,
-    type: 'GeoJSONSource',
-    model,
-  });
+  const jsonData =
+    sourceData?.data ??
+    (sourceData?.path
+      ? await loadFile({
+          filepath: sourceData.path,
+          type: 'GeoJSONSource',
+          model,
+        })
+      : undefined);
   if (!jsonData?.features?.length) {
     return [];
   }
