@@ -27,9 +27,13 @@ def run_gdal(
 
     Returns (content, format) where format is "text" or "base64".
     """
+    safe_output_name = Path(output_name).name
+    if not safe_output_name:
+        raise ValueError(f"Invalid output_name: {output_name!r}")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = os.path.join(tmpdir, "data.geojson")
-        output_path = os.path.join(tmpdir, output_name)
+        output_path = os.path.join(tmpdir, safe_output_name)
 
         with open(input_path, "w") as f:
             f.write(geojson)
@@ -67,11 +71,11 @@ def run_gdal(
 
         if not os.path.exists(output_path):
             raise FileNotFoundError(
-                f"GDAL operation did not produce expected output: {output_name}",
+                f"GDAL operation did not produce expected output: {safe_output_name}",
             )
 
         # Determine output format based on file extension
-        ext = Path(output_name).suffix
+        ext = Path(safe_output_name).suffix
         is_binary = ext.lower() in {".tif", ".tiff", ".gpkg", ".shp"}
 
         if is_binary:
