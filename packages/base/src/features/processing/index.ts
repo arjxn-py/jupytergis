@@ -327,10 +327,11 @@ export async function rasterizeLayer(
     bandMin = values.length ? Math.min(...values) : 0;
     bandMax = values.length ? Math.max(...values) : 1;
   } else {
-    // Burn mode: rasterized pixels are nodata (0) or burnValue. Use 0..burnValue
-    // so normalization maps the burn cleanly to 1 instead of dividing by zero.
-    bandMin = 0;
-    bandMax = Number(burnValue) || 1;
+    // Burn mode: pixels are nodata or burnValue. min/max must be ordered and
+    // non-equal so normalization doesn't divide by zero.
+    const burn = Number(burnValue) || 1;
+    bandMin = Math.min(0, burn);
+    bandMax = Math.max(0, burn) || 1;
   }
 
   const options: string[] = [
