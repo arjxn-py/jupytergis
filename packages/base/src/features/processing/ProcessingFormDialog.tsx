@@ -86,6 +86,10 @@ export class ProcessingFormDialog extends Dialog<IDict> {
       label: layers[layerId].name,
     }));
 
+    const vectorLayerOptions = Object.keys(layers)
+      .filter(layerId => layers[layerId].type === 'VectorLayer')
+      .map(layerId => ({ value: layerId, label: layers[layerId].name }));
+
     // Modify schema to include layer options and layer name field
     if (options.schema) {
       if (options.schema.properties?.inputLayer) {
@@ -93,6 +97,15 @@ export class ProcessingFormDialog extends Dialog<IDict> {
           option => option.value,
         );
         options.schema.properties.inputLayer.enumNames = layerOptions.map(
+          option => option.label,
+        );
+      }
+
+      if (options.schema.properties?.clipLayer) {
+        options.schema.properties.clipLayer.enum = vectorLayerOptions.map(
+          option => option.value,
+        );
+        options.schema.properties.clipLayer.enumNames = vectorLayerOptions.map(
           option => option.label,
         );
       }

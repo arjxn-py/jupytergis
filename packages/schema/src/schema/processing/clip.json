@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "description": "Clip",
+  "title": "IClip",
+  "required": ["inputLayer", "clipLayer"],
+  "additionalProperties": false,
+  "properties": {
+    "inputLayer": {
+      "type": "string",
+      "description": "The input layer to clip."
+    },
+    "clipLayer": {
+      "type": "string",
+      "description": "The layer to use as the clip boundary."
+    },
+    "embedOutputLayer": {
+      "type": "boolean",
+      "title": "Embed output clipped layer in file",
+      "default": true
+    }
+  }
+}

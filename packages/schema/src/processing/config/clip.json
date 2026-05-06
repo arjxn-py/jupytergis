@@ -1,0 +1,9 @@
+{
+  "name": "clip",
+  "label": "Clip",
+  "operationParams": ["clipLayer"],
+  "operations": {
+    "gdalFunction": "ogr2ogr"
+  },
+  "type": "clip"
+}

@@ -487,6 +487,180 @@ export async function rasterizeLayer(
   model.addLayer(UUID.uuid4(), layerModel);
 }
 
+/**
+ * Compute the WKT of the union of all features in a GeoJSON string using WASM GDAL.
+ */
+async function computeUnionWkt(geojsonString: string): Promise<string | null> {
+  const Gdal = await getGdal();
+  const file = new File(
+    [new Blob([geojsonString], { type: 'application/geo+json' })],
+    'clip_data.geojson',
+    { type: 'application/geo+json' },
+  );
+  const result = await Gdal.open(file);
+  if (result.datasets.length === 0) {
+    return null;
+  }
+  const dataset = result.datasets[0] as any;
+  const layerName = dataset.info.layers[0].name;
+  const options = [
+    '-f',
+    'CSV',
+    '-dialect',
+    'SQLITE',
+    '-sql',
+    `SELECT ST_AsText(ST_Union(geometry)) AS wkt FROM "${layerName}"`,
+    'clip_union.csv',
+  ];
+  const outputPath = await (Gdal as any).ogr2ogr(dataset, options);
+  const bytes = await Gdal.getFileBytes(outputPath);
+  Gdal.close(dataset);
+  const csv = new TextDecoder().decode(bytes);
+  const lines = csv.split('\n').filter((l: string) => l.trim());
+  if (lines.length < 2) {
+    return null;
+  }
+  // ogr2ogr CSV wraps fields containing commas in double-quotes; strip them
+  let wkt = lines[1].trim();
+  if (wkt.startsWith('"') && wkt.endsWith('"')) {
+    wkt = wkt.slice(1, -1).replace(/""/g, '"');
+  }
+  return wkt || null;
+}
+
+/**
+ * Clip a vector layer by another vector layer using ST_Intersection.
+ */
+export async function clipVectorLayer(
+  tracker: JupyterGISTracker,
+  formSchemaRegistry: IJGISFormSchemaRegistry,
+  app: JupyterFrontEnd,
+  filePath?: string,
+  processingInputs?: Record<string, any>,
+) {
+  const widget = filePath
+    ? tracker.find(w => w.model.filePath === filePath)
+    : tracker.currentWidget;
+  if (!widget) {
+    return;
+  }
+
+  const model = widget.model;
+  const sources = model.sharedModel.sources ?? {};
+  const layers = model.sharedModel.layers ?? {};
+
+  let selected: IJGISLayer | null = null;
+  if (processingInputs?.inputLayer) {
+    selected = layers[processingInputs.inputLayer];
+  } else {
+    selected = getSingleSelectedLayer(tracker);
+  }
+  if (!selected) {
+    return;
+  }
+
+  const inputGeoJSON = await getLayerGeoJSON(selected, sources, model);
+  if (!inputGeoJSON) {
+    return;
+  }
+
+  let clipLayerId: string;
+  let embedOutputLayer = true;
+  let outputLayerName = selected.name;
+
+  if (processingInputs) {
+    clipLayerId = processingInputs.clipLayer;
+    embedOutputLayer = processingInputs.embedOutputLayer ?? true;
+    outputLayerName = processingInputs.outputLayerName ?? 'Clip Layer';
+  } else {
+    const schema = {
+      ...(formSchemaRegistry.getSchemas().get('Clip') as IDict),
+    };
+    const selectedLayerId = Object.keys(
+      model.sharedModel.awareness.getLocalState()?.selected?.value || {},
+    )[0];
+
+    const formValues = await new Promise<IDict>(resolve => {
+      const dialog = new ProcessingFormDialog({
+        title: 'Clip',
+        schema,
+        model,
+        sourceData: {
+          inputLayer: selectedLayerId,
+          outputLayerName: selected.name,
+        },
+        formContext: 'create',
+        processingType: 'Clip',
+        syncData: (props: IDict) => {
+          resolve(props);
+          dialog.dispose();
+        },
+      });
+      dialog.launch();
+    });
+
+    if (!formValues) {
+      return;
+    }
+
+    clipLayerId = formValues.clipLayer;
+    embedOutputLayer = formValues.embedOutputLayer;
+    outputLayerName = formValues.outputLayerName;
+  }
+
+  const clipLayer = layers[clipLayerId];
+  if (!clipLayer) {
+    console.error(`Clip layer ${clipLayerId} not found`);
+    return;
+  }
+
+  const clipGeoJSON = await getLayerGeoJSON(clipLayer, sources, model);
+  if (!clipGeoJSON) {
+    return;
+  }
+
+  const clipWkt = await computeUnionWkt(clipGeoJSON);
+  if (!clipWkt) {
+    console.error('Failed to compute clip geometry WKT');
+    return;
+  }
+
+  const Gdal = await getGdal();
+  const inputFile = new File(
+    [new Blob([inputGeoJSON], { type: 'application/geo+json' })],
+    'data.geojson',
+    { type: 'application/geo+json' },
+  );
+  const openResult = await Gdal.open(inputFile);
+  const dataset = openResult.datasets[0] as any;
+  const inputLayerName = dataset.info.layers[0].name;
+  Gdal.close(dataset);
+
+  const escapedWkt = clipWkt.replace(/'/g, "''");
+  const sql = `SELECT ST_Intersection(geometry, ST_GeomFromText('${escapedWkt}')) AS geometry, * FROM "${inputLayerName}" WHERE ST_Intersects(geometry, ST_GeomFromText('${escapedWkt}'))`;
+  const options = [
+    '-f',
+    'GeoJSON',
+    '-dialect',
+    'SQLITE',
+    '-sql',
+    sql,
+    '{outputName}',
+  ];
+
+  await executeSQLProcessing(
+    model,
+    inputGeoJSON,
+    'ogr2ogr',
+    options,
+    outputLayerName,
+    'Clip',
+    embedOutputLayer,
+    tracker,
+    app,
+  );
+}
+
 export async function executeSQLProcessing(
   model: IJupyterGISModel,
   geojsonString: string,
