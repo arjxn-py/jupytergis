@@ -531,7 +531,7 @@ async function computeUnionWkt(geojsonString: string): Promise<string | null> {
 /**
  * Clip a vector layer by another vector layer using ST_Intersection.
  */
-export async function clipVectorLayer(
+export async function clipVectorByMaskLayer(
   tracker: JupyterGISTracker,
   formSchemaRegistry: IJGISFormSchemaRegistry,
   app: JupyterFrontEnd,
@@ -574,7 +574,7 @@ export async function clipVectorLayer(
     outputLayerName = processingInputs.outputLayerName ?? 'Clip Layer';
   } else {
     const schema = {
-      ...(formSchemaRegistry.getSchemas().get('Clip') as IDict),
+      ...(formSchemaRegistry.getSchemas().get('ClipVectorByMaskLayer') as IDict),
     };
     const selectedLayerId = Object.keys(
       model.sharedModel.awareness.getLocalState()?.selected?.value || {},
@@ -590,7 +590,7 @@ export async function clipVectorLayer(
           outputLayerName: selected.name,
         },
         formContext: 'create',
-        processingType: 'Clip',
+        processingType: 'ClipVectorByMaskLayer',
         syncData: (props: IDict) => {
           resolve(props);
           dialog.dispose();
@@ -654,7 +654,7 @@ export async function clipVectorLayer(
     'ogr2ogr',
     options,
     outputLayerName,
-    'Clip',
+    'ClipVectorByMaskLayer',
     embedOutputLayer,
     tracker,
     app,

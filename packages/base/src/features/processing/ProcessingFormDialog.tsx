@@ -143,7 +143,7 @@ export class ProcessingFormDialog extends Dialog<IDict> {
     };
 
     const body = (
-      <div style={{ overflow: 'hidden' }}>
+      <div style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <ProcessingFormWrapper
           {...options}
           filePath={filePath}

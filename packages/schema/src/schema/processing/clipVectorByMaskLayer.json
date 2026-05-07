@@ -1,7 +1,7 @@
 {
   "type": "object",
-  "description": "Clip",
-  "title": "IClip",
+  "description": "ClipVectorByMaskLayer",
+  "title": "IClipVectorByMaskLayer",
   "required": ["inputLayer", "clipLayer"],
   "additionalProperties": false,
   "properties": {

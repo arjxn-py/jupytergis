@@ -12,7 +12,7 @@ import {
   selectedLayerIsOfType,
   processLayer,
   rasterizeLayer,
-  clipVectorLayer,
+  clipVectorByMaskLayer,
 } from './index';
 import { JupyterGISTracker } from '../../types';
 
@@ -181,7 +181,7 @@ export function addProcessingCommands(
           layerId?: string;
           processingInputs?: Record<string, any>;
         }) => {
-          await clipVectorLayer(
+          await clipVectorByMaskLayer(
             tracker,
             formSchemaRegistry,
             app,
