@@ -2,7 +2,13 @@ import { IDict, IJupyterGISModel } from '@jupytergis/schema';
 import { Dialog } from '@jupyterlab/apputils';
 import { Signal } from '@lumino/signaling';
 import { transformExtent } from 'ol/proj';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { SchemaForm } from '@/src/formbuilder/objectform/SchemaForm';
 import { useSchemaFormState } from '@/src/formbuilder/objectform/useSchemaFormState';
@@ -16,8 +22,14 @@ export interface IClipRasterByExtentFormProps extends IBaseFormProps {
 export function ClipRasterByExtentForm(
   props: IClipRasterByExtentFormProps,
 ): React.ReactElement | null {
-  const { schema: schemaProp, sourceData, syncData, model, filePath, ok } =
-    props;
+  const {
+    schema: schemaProp,
+    sourceData,
+    syncData,
+    model,
+    filePath,
+    ok,
+  } = props;
 
   const { formData, setFormData, schema, hasSchema } = useSchemaFormState({
     sourceData,
@@ -207,9 +219,7 @@ export function ClipRasterByExtentForm(
       {/* Extent fields — CSS-disabled when checkbox is on */}
       <div
         style={
-          useMapExtent
-            ? { pointerEvents: 'none', opacity: 0.4 }
-            : undefined
+          useMapExtent ? { pointerEvents: 'none', opacity: 0.4 } : undefined
         }
       >
         <SchemaForm
