@@ -8,7 +8,12 @@ import {
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { CommandRegistry } from '@lumino/commands';
 
-import { selectedLayerIsOfType, processLayer, rasterizeLayer } from './index';
+import {
+  selectedLayerIsOfType,
+  processLayer,
+  rasterizeLayer,
+  clipRasterByExtent,
+} from './index';
 import { JupyterGISTracker } from '../../types';
 
 export function replaceInSql(
@@ -143,6 +148,42 @@ export function addProcessingCommands(
             formSchemaRegistry,
             processingElement.description as ProcessingType,
             processingElement.operations.gdalFunction,
+            app,
+            args?.filePath,
+            args?.processingInputs,
+          );
+        },
+      });
+    } else if (processingElement.type === ProcessingLogicType.rasterClip) {
+      commands.addCommand(`jupytergis:${processingElement.name}`, {
+        label: trans.__(processingElement.label),
+        describedBy: {
+          args: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Path to the .jGIS file',
+              },
+              layerId: {
+                type: 'string',
+                description: 'Layer ID to process',
+              },
+              params: processingSchemas[schemaKey],
+            },
+          },
+        },
+
+        isEnabled: () => selectedLayerIsOfType(['GeoTiffLayer'], tracker),
+
+        execute: async (args?: {
+          filePath?: string;
+          layerId?: string;
+          processingInputs?: Record<string, any>;
+        }) => {
+          await clipRasterByExtent(
+            tracker,
+            formSchemaRegistry,
             app,
             args?.filePath,
             args?.processingInputs,
