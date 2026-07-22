@@ -42,6 +42,13 @@
 @import url('./shared/input.css');
 @import url('./shared/nativeSelect.css');
 
+/* TEMP: deliberate snapshot break to exercise the Galata diff-report bot.
+   Remove before merging — this is a demo PR, not a real change. */
+.jGIS-Mainview {
+  border: 15px solid magenta;
+  box-sizing: border-box;
+}
+
 .jgis-underline-indicator {
   position: relative;
   opacity: 0.7;
