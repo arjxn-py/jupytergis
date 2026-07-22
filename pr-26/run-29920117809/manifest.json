@@ -1,0 +1,38 @@
+[
+  {
+    "name": "light-Notebook-ipynb-cell-4",
+    "slug": "artifacts_jupytergis-playwright-tests_test-results_tests-notebook-Notebook-AP-da5b3-l-outputs-should-be-correct-chromium-retry1_light-Notebook-ipynb-cell-4",
+    "has": {
+      "diff": true,
+      "actual": true,
+      "expected": true
+    }
+  },
+  {
+    "name": "dark-Notebook-ipynb-cell-4",
+    "slug": "artifacts_jupytergis-playwright-tests_test-results_tests-notebook-Notebook-AP-aebed-l-outputs-should-be-correct-chromium_dark-Notebook-ipynb-cell-4",
+    "has": {
+      "diff": true,
+      "actual": true,
+      "expected": true
+    }
+  },
+  {
+    "name": "dark-Notebook-ipynb-cell-4",
+    "slug": "artifacts_jupytergis-playwright-tests_test-results_tests-notebook-Notebook-AP-aebed-l-outputs-should-be-correct-chromium-retry1_dark-Notebook-ipynb-cell-4",
+    "has": {
+      "diff": true,
+      "actual": true,
+      "expected": true
+    }
+  },
+  {
+    "name": "light-Notebook-ipynb-cell-4",
+    "slug": "artifacts_jupytergis-playwright-tests_test-results_tests-notebook-Notebook-AP-da5b3-l-outputs-should-be-correct-chromium_light-Notebook-ipynb-cell-4",
+    "has": {
+      "diff": true,
+      "actual": true,
+      "expected": true
+    }
+  }
+]
